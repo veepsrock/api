@@ -57,7 +57,7 @@ df.columns
 
 # COMMAND ----------
 
-df["description"]
+df["description"][30]
 
 # COMMAND ----------
 
@@ -86,7 +86,11 @@ orgs.shape
 
 # COMMAND ----------
 
-orgs
+orgs.columns
+
+# COMMAND ----------
+
+orgs['description']
 
 # COMMAND ----------
 
