@@ -9,6 +9,7 @@ from huggingface_hub import HfApi, list_models
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
+import pickle
 
 
 # COMMAND ----------
@@ -41,23 +42,13 @@ for model in models:
     m["config"] = model.config
     m["securityStatus"] = model.securityStatus
     m["downloads"] = model.downloads
+    m["language"] = model.language
+    m["license"] = model.license
     model_list.append(m)
 
 # COMMAND ----------
 
 df = pd.DataFrame(model_list)
-
-# COMMAND ----------
-
-df["author"].unique()
-
-# COMMAND ----------
-
-df.head()
-
-# COMMAND ----------
-
-df["author"].unique()
 
 # COMMAND ----------
 
@@ -74,15 +65,45 @@ df['modelName']= df['modelId'].apply(lambda x: x.split('/')[1] if x.find('/')!=-
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC # Write to pickle
+
+# COMMAND ----------
+
+# write to pickle to save
+df_file = open("hf_models", "ab")
+pickle.dump(df, df_file)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # For when to read data back in
+
+# COMMAND ----------
+
+df = pd.read_pickle("./hf_models.pkl")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # EDA
+
+# COMMAND ----------
+
+df.shape
+
+# COMMAND ----------
+
 # Sorting the DataFrame by downloads and selecting the top 20 rows
 df_sorted = df.sort_values('downloads', ascending=False).head(20)
+df_sorted = df_sorted.sort_values('downloads', ascending=True).head(20)
 
 # Creating a bar chart for the top 20 downloads
 plt.figure(figsize=(10, 6))
 plt.barh(df_sorted['modelName'], df_sorted['downloads'], color='skyblue', edgecolor='black')
-plt.title('Top 20 Downloads by Model Name')
-plt.xlabel('Model Name')
-plt.ylabel('Downloads')
+plt.title('Top 20 Models')
+plt.xlabel('Total Downloads')
+plt.ylabel('Model Name')
 
 # Customizing the x-axis labels to display values in millions
 def format_func(value, tick_number):
@@ -97,11 +118,51 @@ plt.show()
 
 # COMMAND ----------
 
-df_sorted
+df.head()
 
 # COMMAND ----------
 
-df["modelId"].str.split("/", expand = True)
+users = df.groupby("user").sum("downloads").sort_values("downloads", ascending = False).head(20).reset_index()
+users = users.sort_values("downloads", ascending = True)
+
+# Creating a bar chart for the top 20 downloads users
+plt.figure(figsize=(10, 6))
+plt.barh(users['user'], users['downloads'], color='skyblue', edgecolor='black')
+plt.title('Top 20 Users')
+plt.xlabel('Total Downloads')
+plt.ylabel('User Name')
+
+# Customizing the x-axis labels to display values in millions
+def format_func(value, tick_number):
+    if value >= 1e6:
+        value = value / 1e6
+        return f'{value:.1f}M'
+    else:
+        return value
+
+plt.gca().xaxis.set_major_formatter(FuncFormatter(format_func))
+plt.show()
+
+# COMMAND ----------
+
+df["modelName"].value_counts()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Review popular tags
+
+# COMMAND ----------
+
+df.head()
+
+# COMMAND ----------
+
+df_counts = df["tags"].explode().value_counts()
+
+# COMMAND ----------
+
+df_counts.to_frame().head(10).T
 
 # COMMAND ----------
 
@@ -127,6 +188,7 @@ for dataset in datasets:
     d["author"] = dataset.author
     d["citation"] = dataset.citation
     d["cardData"] = dataset.cardData
+    d["downloads"] = dataset.downloads
     dataset_list.append(d)
 
 # COMMAND ----------
@@ -139,7 +201,39 @@ data_df.head()
 
 # COMMAND ----------
 
-data_df.shape
+data_df["author"].value_counts()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Top authors for data
+
+# COMMAND ----------
+
+authors = data_df.groupby("author").sum("downloads").sort_values("downloads", ascending = False).head(20).reset_index()
+authors = authors.sort_values("downloads", ascending = True)
+
+# Creating a bar chart for the top 20 downloads authors
+plt.figure(figsize=(10, 6))
+plt.barh(authors['author'], authors['downloads'], color='skyblue', edgecolor='black')
+plt.title('Top 20 authors')
+plt.xlabel('Total Downloads')
+plt.ylabel('Author Name')
+
+# Customizing the x-axis labels to display values in millions
+def format_func(value, tick_number):
+    if value >= 1e6:
+        value = value / 1e6
+        return f'{value:.1f}M'
+    else:
+        return value
+
+plt.gca().xaxis.set_major_formatter(FuncFormatter(format_func))
+plt.show()
+
+# COMMAND ----------
+
+data_df["citation"].value_counts()
 
 # COMMAND ----------
 
